@@ -3,7 +3,6 @@ import axios from "axios";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./App.css";
 
-// ✅ Define the Flask Backend URL on Render
 const API_BASE_URL = "https://chem-bot2.onrender.com";
 
 function App() {
@@ -14,7 +13,12 @@ function App() {
     const [functionalGroups, setFunctionalGroups] = useState([]);
     const [spectroData, setSpectroData] = useState(null);
     const [errorMessage, setErrorMessage] = useState("");
-    const [loading, setLoading] = useState(false);
+    const [loadingState, setLoadingState] = useState({
+        analyzing: false,
+        generating: false,
+        detecting: false,
+        spectro: false
+    });
 
     // ✅ Handle Molecule Analysis & 2D Visualization
     const handleSubmit = async () => {
@@ -28,7 +32,8 @@ function App() {
         }
 
         try {
-            // ✅ Corrected API Calls inside handleSubmit()
+            setLoadingState((prev) => ({ ...prev, analyzing: true }));
+
             const res = await axios.post(`${API_BASE_URL}/molecule-info`, { smiles });
             setResponse(res.data);
 
@@ -38,38 +43,37 @@ function App() {
                 { responseType: "blob" }
             );
             setImageUrl(URL.createObjectURL(imageRes.data));
-
         } catch (error) {
             setErrorMessage("❌ Invalid molecule or server error.");
+        } finally {
+            setLoadingState((prev) => ({ ...prev, analyzing: false }));
         }
     };
-
 
     // ✅ Handle AI-Based Molecule Generation
     const handleGenerateMolecule = async () => {
         setErrorMessage("");
         setGeneratedMolecules([]);
-        setLoading(true);
 
         if (!smiles.trim()) {
             setErrorMessage("❌ Please enter a valid base SMILES string.");
-            setLoading(false);
             return;
         }
 
         try {
+            setLoadingState((prev) => ({ ...prev, generating: true }));
+
             const res = await axios.post(`${API_BASE_URL}/generate-molecule`, { smiles });
 
-            if (res.data.generated_smiles) {
+            if (res.data?.generated_smiles?.length > 0) {
                 setGeneratedMolecules(res.data.generated_smiles);
             } else {
                 setErrorMessage("❌ AI failed to generate valid molecules.");
             }
-
         } catch (error) {
             setErrorMessage("❌ AI failed to generate molecules.");
         } finally {
-            setLoading(false);
+            setLoadingState((prev) => ({ ...prev, generating: false }));
         }
     };
 
@@ -77,64 +81,53 @@ function App() {
     const handleFunctionalGroups = async () => {
         setErrorMessage("");
         setFunctionalGroups([]);
-        setLoading(true);
 
         if (!smiles.trim()) {
             setErrorMessage("❌ Please enter a valid SMILES string.");
-            setLoading(false);
             return;
         }
 
         try {
+            setLoadingState((prev) => ({ ...prev, detecting: true }));
+
             const res = await axios.post(`${API_BASE_URL}/functional-groups`, { smiles });
 
-            if (res.data.functional_groups.length > 0) {
+            if (res.data?.functional_groups?.length > 0) {
                 setFunctionalGroups(res.data.functional_groups);
             } else {
                 setErrorMessage("❌ No functional groups detected.");
             }
-
         } catch (error) {
             setErrorMessage("❌ Functional group detection failed.");
         } finally {
-            setLoading(false);
+            setLoadingState((prev) => ({ ...prev, detecting: false }));
         }
     };
-
-    const fetchData = async () => {
-        try {
-            const res = await axios.post("https://chem-bot2.onrender.com/molecule-info", { smiles });
-            console.log(res.data);
-        } catch (error) {
-            console.error(error);
-        }
-    };    
 
     // ✅ Handle Spectrochemical Analysis
     const handleSpectroAnalysis = async () => {
         setErrorMessage("");
         setSpectroData(null);
-        setLoading(true);
 
         if (!smiles.trim()) {
             setErrorMessage("❌ Please enter a valid SMILES string.");
-            setLoading(false);
             return;
         }
 
         try {
+            setLoadingState((prev) => ({ ...prev, spectro: true }));
+
             const res = await axios.post(`${API_BASE_URL}/spectrochemical-analysis`, { smiles });
 
-            if (res.data.spectrochemical_analysis) {
+            if (res.data?.spectrochemical_analysis) {
                 setSpectroData(res.data.spectrochemical_analysis);
             } else {
                 setErrorMessage("❌ No spectrochemical data available.");
             }
-
         } catch (error) {
             setErrorMessage("❌ Spectrochemical analysis failed.");
         } finally {
-            setLoading(false);
+            setLoadingState((prev) => ({ ...prev, spectro: false }));
         }
     };
 
@@ -162,7 +155,7 @@ function App() {
             </div>
 
             {/* Show Loading Indicator */}
-            {loading && <p className="text-center text-info">⏳ Processing...</p>}
+            {Object.values(loadingState).some(Boolean) && <p className="text-center text-info">⏳ Processing...</p>}
 
             {/* Show Error Message */}
             {errorMessage && <div className="alert alert-danger mt-3">{errorMessage}</div>}
