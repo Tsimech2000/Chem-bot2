@@ -109,7 +109,7 @@ function App() {
 
     const fetchData = async () => {
         try {
-            const res = await axios.post("https://your-flask-app.onrender.com/molecule-info", { smiles });
+            const res = await axios.post("https://chem-bot2.onrender.com/molecule-info", { smiles });
             console.log(res.data);
         } catch (error) {
             console.error(error);
