@@ -4,7 +4,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "./App.css";
 
 // ✅ Define the Flask Backend URL on Render
-const API_BASE_URL = "https://your-flask-app.onrender.com";
+const API_BASE_URL = "https://chem-bot2.onrender.com";
 
 function App() {
     const [smiles, setSmiles] = useState("");
@@ -225,3 +225,4 @@ function App() {
 }
 
 export default App;
+
