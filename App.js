@@ -5,7 +5,7 @@ import "./App.css";
 
 // ✅ Define the Flask Backend URL on Render
 const API_BASE_URL = "https://chem-bot2.onrender.com";
-const res = await axios.post(`${API_BASE_URL}/molecule-info`, { smiles });
+const res = await axios.post("https://your-flask-app.onrender.com/molecule-info", { smiles });
 
 function App() {
     const [smiles, setSmiles] = useState("");
@@ -106,6 +106,15 @@ function App() {
             setLoading(false);
         }
     };
+
+    const fetchData = async () => {
+        try {
+            const res = await axios.post("https://your-flask-app.onrender.com/molecule-info", { smiles });
+            console.log(res.data);
+        } catch (error) {
+            console.error(error);
+        }
+    };    
 
     // ✅ Handle Spectrochemical Analysis
     const handleSpectroAnalysis = async () => {
