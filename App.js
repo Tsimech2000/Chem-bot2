@@ -5,6 +5,7 @@ import "./App.css";
 
 // ✅ Define the Flask Backend URL on Render
 const API_BASE_URL = "https://chem-bot2.onrender.com";
+const res = await axios.post(`${API_BASE_URL}/molecule-info`, { smiles });
 
 function App() {
     const [smiles, setSmiles] = useState("");
@@ -225,4 +226,5 @@ function App() {
 }
 
 export default App;
+
 
