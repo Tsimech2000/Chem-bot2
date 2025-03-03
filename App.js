@@ -5,7 +5,6 @@ import "./App.css";
 
 // ✅ Define the Flask Backend URL on Render
 const API_BASE_URL = "https://chem-bot2.onrender.com";
-const res = await axios.post("https://chem-bot2.onrender.com/molecule-info", { smiles });
 
 function App() {
     const [smiles, setSmiles] = useState("");
@@ -22,18 +21,14 @@ function App() {
         setErrorMessage("");
         setResponse(null);
         setImageUrl(null);
-        setGeneratedMolecules([]);
-        setFunctionalGroups([]);
-        setSpectroData(null);
-        setLoading(true);
 
         if (!smiles.trim()) {
             setErrorMessage("❌ Please enter a valid SMILES string.");
-            setLoading(false);
             return;
         }
 
         try {
+            // ✅ Corrected API Calls inside handleSubmit()
             const res = await axios.post(`${API_BASE_URL}/molecule-info`, { smiles });
             setResponse(res.data);
 
@@ -46,10 +41,9 @@ function App() {
 
         } catch (error) {
             setErrorMessage("❌ Invalid molecule or server error.");
-        } finally {
-            setLoading(false);
         }
     };
+
 
     // ✅ Handle AI-Based Molecule Generation
     const handleGenerateMolecule = async () => {
