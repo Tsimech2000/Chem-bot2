@@ -3,6 +3,7 @@ import axios from "axios";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./App.css";
 
+// ✅ Define Flask Backend URL
 const API_BASE_URL = "https://chem-bot2.onrender.com";
 
 function App() {
@@ -11,16 +12,14 @@ function App() {
     const [imageUrl, setImageUrl] = useState(null);
     const [generatedMolecules, setGeneratedMolecules] = useState([]);
     const [functionalGroups, setFunctionalGroups] = useState([]);
-    const [spectroData, setSpectroData] = useState(null);
     const [errorMessage, setErrorMessage] = useState("");
     const [loadingState, setLoadingState] = useState({
         analyzing: false,
         generating: false,
-        detecting: false,
-        spectro: false
+        detecting: false
     });
 
-    // ✅ Handle Molecule Analysis & 2D Visualization
+    // ✅ Handle Molecule Analysis & 2D Visualization (With IUPAC Naming)
     const handleSubmit = async () => {
         setErrorMessage("");
         setResponse(null);
@@ -65,7 +64,7 @@ function App() {
 
             const res = await axios.post(`${API_BASE_URL}/generate-molecule`, { smiles });
 
-            if (res.data?.generated_smiles?.length > 0) {
+            if (res.data && res.data.generated_smiles) {
                 setGeneratedMolecules(res.data.generated_smiles);
             } else {
                 setErrorMessage("❌ AI failed to generate valid molecules.");
@@ -92,7 +91,7 @@ function App() {
 
             const res = await axios.post(`${API_BASE_URL}/functional-groups`, { smiles });
 
-            if (res.data?.functional_groups?.length > 0) {
+            if (res.data && res.data.functional_groups) {
                 setFunctionalGroups(res.data.functional_groups);
             } else {
                 setErrorMessage("❌ No functional groups detected.");
@@ -101,33 +100,6 @@ function App() {
             setErrorMessage("❌ Functional group detection failed.");
         } finally {
             setLoadingState((prev) => ({ ...prev, detecting: false }));
-        }
-    };
-
-    // ✅ Handle Spectrochemical Analysis
-    const handleSpectroAnalysis = async () => {
-        setErrorMessage("");
-        setSpectroData(null);
-
-        if (!smiles.trim()) {
-            setErrorMessage("❌ Please enter a valid SMILES string.");
-            return;
-        }
-
-        try {
-            setLoadingState((prev) => ({ ...prev, spectro: true }));
-
-            const res = await axios.post(`${API_BASE_URL}/spectrochemical-analysis`, { smiles });
-
-            if (res.data?.spectrochemical_analysis) {
-                setSpectroData(res.data.spectrochemical_analysis);
-            } else {
-                setErrorMessage("❌ No spectrochemical data available.");
-            }
-        } catch (error) {
-            setErrorMessage("❌ Spectrochemical analysis failed.");
-        } finally {
-            setLoadingState((prev) => ({ ...prev, spectro: false }));
         }
     };
 
@@ -151,7 +123,6 @@ function App() {
             <div className="d-flex justify-content-center mb-3">
                 <button onClick={handleGenerateMolecule} className="btn btn-primary mx-2">Generate Molecule</button>
                 <button onClick={handleFunctionalGroups} className="btn btn-dark mx-2">Detect Functional Groups</button>
-                <button onClick={handleSpectroAnalysis} className="btn btn-warning mx-2">Spectrochemical Analysis</button>
             </div>
 
             {/* Show Loading Indicator */}
@@ -160,11 +131,12 @@ function App() {
             {/* Show Error Message */}
             {errorMessage && <div className="alert alert-danger mt-3">{errorMessage}</div>}
 
-            {/* Molecule Analysis Results */}
+            {/* Molecule Analysis Results (Including IUPAC Naming) */}
             {response && (
                 <div className="card p-3 mt-3">
                     <h3 className="text-dark">🔬 Molecular Data</h3>
                     <p><strong>SMILES:</strong> {response.smiles}</p>
+                    <p><strong>IUPAC Name:</strong> {response.iupac_name || "N/A"}</p>
                     <p><strong>Molecular Weight:</strong> {response.molecular_weight} g/mol</p>
                     <p><strong>Number of Atoms:</strong> {response.num_atoms}</p>
                     <p><strong>Number of Bonds:</strong> {response.num_bonds}</p>
@@ -199,20 +171,6 @@ function App() {
                     <ul className="list-group">
                         {functionalGroups.map((group, i) => (
                             <li key={i} className="list-group-item">{group}</li>
-                        ))}
-                    </ul>
-                </div>
-            )}
-
-            {/* Spectrochemical Analysis Results */}
-            {spectroData && (
-                <div className="card p-3 mt-3">
-                    <h3>📊 Spectrochemical Analysis</h3>
-                    <ul className="list-group">
-                        {Object.entries(spectroData).map(([group, data], i) => (
-                            <li key={i} className="list-group-item">
-                                <strong>{group}:</strong> IR: {data.IR}, NMR: {data.NMR}, MS: {data.MS}
-                            </li>
                         ))}
                     </ul>
                 </div>
