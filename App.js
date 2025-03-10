@@ -1,184 +1,199 @@
-import React, { useState } from "react";
-import axios from "axios";
-import "bootstrap/dist/css/bootstrap.min.css";
-import "./App.css";
+from flask import Flask, request, jsonify, send_file
+from flask_cors import CORS
+from rdkit import Chem
+from rdkit.Chem import AllChem, Draw, Descriptors, DataStructs
+import random
+from io import BytesIO
+import requests
 
-// ✅ Define Flask Backend URL
-const API_BASE_URL = "https://chem-bot2.onrender.com";
+app = Flask(__name__)  # ✅ Define the Flask app before using it
+CORS(app)
 
-function App() {
-    const [smiles, setSmiles] = useState("");
-    const [response, setResponse] = useState(null);
-    const [imageUrl, setImageUrl] = useState(null);
-    const [generatedMolecules, setGeneratedMolecules] = useState([]);
-    const [functionalGroups, setFunctionalGroups] = useState([]);
-    const [errorMessage, setErrorMessage] = useState("");
-    const [loadingState, setLoadingState] = useState({
-        analyzing: false,
-        generating: false,
-        detecting: false
-    });
-
-    // ✅ Handle Molecule Analysis & 2D Visualization (With IUPAC Naming)
-    const handleSubmit = async () => {
-        setErrorMessage("");
-        setResponse(null);
-        setImageUrl(null);
-
-        if (!smiles.trim()) {
-            setErrorMessage("❌ Please enter a valid SMILES string.");
-            return;
-        }
-
-        try {
-            setLoadingState((prev) => ({ ...prev, analyzing: true }));
-
-            const res = await axios.post(`${API_BASE_URL}/molecule-info`, { smiles });
-            setResponse(res.data);
-
-            const imageRes = await axios.post(
-                `${API_BASE_URL}/molecule-image`,
-                { smiles },
-                { responseType: "blob" }
-            );
-            setImageUrl(URL.createObjectURL(imageRes.data));
-        } catch (error) {
-            setErrorMessage("❌ Invalid molecule or server error.");
-        } finally {
-            setLoadingState((prev) => ({ ...prev, analyzing: false }));
-        }
-    };
-
-    // ✅ Handle AI-Based Molecule Generation
-    const handleGenerateMolecule = async () => {
-        setErrorMessage("");
-        setGeneratedMolecules([]);
-
-        if (!smiles.trim()) {
-            setErrorMessage("❌ Please enter a valid base SMILES string.");
-            return;
-        }
-
-        try {
-            setLoadingState((prev) => ({ ...prev, generating: true }));
-
-            const res = await axios.post(`${API_BASE_URL}/generate-molecule`, { smiles });
-
-            if (res.data && res.data.generated_smiles) {
-                setGeneratedMolecules(res.data.generated_smiles);
-            } else {
-                setErrorMessage("❌ AI failed to generate valid molecules.");
-            }
-        } catch (error) {
-            setErrorMessage("❌ AI failed to generate molecules.");
-        } finally {
-            setLoadingState((prev) => ({ ...prev, generating: false }));
-        }
-    };
-
-    // ✅ Handle Functional Group Detection
-    const handleFunctionalGroups = async () => {
-        setErrorMessage("");
-        setFunctionalGroups([]);
-
-        if (!smiles.trim()) {
-            setErrorMessage("❌ Please enter a valid SMILES string.");
-            return;
-        }
-
-        try {
-            setLoadingState((prev) => ({ ...prev, detecting: true }));
-
-            const res = await axios.post(`${API_BASE_URL}/functional-groups`, { smiles });
-
-            if (res.data && res.data.functional_groups) {
-                setFunctionalGroups(res.data.functional_groups);
-            } else {
-                setErrorMessage("❌ No functional groups detected.");
-            }
-        } catch (error) {
-            setErrorMessage("❌ Functional group detection failed.");
-        } finally {
-            setLoadingState((prev) => ({ ...prev, detecting: false }));
-        }
-    };
-
-    return (
-        <div className="container mt-5">
-            <h1 className="text-center text-primary">🧪 Chemistry Research Chatbot</h1>
-
-            {/* Molecule Input Field */}
-            <div className="input-group my-4">
-                <input
-                    type="text"
-                    value={smiles}
-                    onChange={(e) => setSmiles(e.target.value)}
-                    placeholder="Enter SMILES (e.g., CCO)"
-                    className="form-control"
-                />
-                <button onClick={handleSubmit} className="btn btn-success">Analyze</button>
-            </div>
-
-            {/* Buttons Row */}
-            <div className="d-flex justify-content-center mb-3">
-                <button onClick={handleGenerateMolecule} className="btn btn-primary mx-2">Generate Molecule</button>
-                <button onClick={handleFunctionalGroups} className="btn btn-dark mx-2">Detect Functional Groups</button>
-            </div>
-
-            {/* Show Loading Indicator */}
-            {Object.values(loadingState).some(Boolean) && <p className="text-center text-info">⏳ Processing...</p>}
-
-            {/* Show Error Message */}
-            {errorMessage && <div className="alert alert-danger mt-3">{errorMessage}</div>}
-
-            {/* Molecule Analysis Results (Including IUPAC Naming) */}
-            {response && (
-                <div className="card p-3 mt-3">
-                    <h3 className="text-dark">🔬 Molecular Data</h3>
-                    <p><strong>SMILES:</strong> {response.smiles}</p>
-                    <p><strong>IUPAC Name:</strong> {response.iupac_name || "N/A"}</p>
-                    <p><strong>Molecular Weight:</strong> {response.molecular_weight} g/mol</p>
-                    <p><strong>Number of Atoms:</strong> {response.num_atoms}</p>
-                    <p><strong>Number of Bonds:</strong> {response.num_bonds}</p>
-                    <p><strong>LogP:</strong> {response.logP}</p>
-                </div>
-            )}
-
-            {/* 2D Molecule Visualization */}
-            {imageUrl && (
-                <div className="mt-4 text-center">
-                    <h4>🖼️ Molecule Structure</h4>
-                    <img src={imageUrl} alt="Molecule Structure" className="img-fluid border border-dark rounded mt-3" />
-                </div>
-            )}
-
-            {/* AI-Generated Molecules */}
-            {generatedMolecules.length > 0 && (
-                <div className="card p-3 mt-3">
-                    <h3>🤖 AI-Generated Molecules</h3>
-                    <ul className="list-group">
-                        {generatedMolecules.map((mol, i) => (
-                            <li key={i} className="list-group-item">{mol}</li>
-                        ))}
-                    </ul>
-                </div>
-            )}
-
-            {/* Functional Groups */}
-            {functionalGroups.length > 0 && (
-                <div className="card p-3 mt-3">
-                    <h3>🔬 Functional Groups Detected</h3>
-                    <ul className="list-group">
-                        {functionalGroups.map((group, i) => (
-                            <li key={i} className="list-group-item">{group}</li>
-                        ))}
-                    </ul>
-                </div>
-            )}
-        </div>
-    );
+# ✅ Functional Group SMARTS Patterns
+FUNCTIONAL_GROUPS = {
+    "Hydroxyl (-OH)": "[OX2H]",
+    "Amine (-NH2, -NR2)": "[NX3;H2,H1;!$(NC=O)]",
+    "Carbonyl (C=O)": "[CX3]=[OX1]",
+    "Carboxyl (-COOH)": "C(=O)[OX2H1]",
+    "Alkene (C=C)": "C=C",
+    "Alkyne (C≡C)": "C#C",
+    "Aromatic Ring": "a",
+    "Sulfonyl (-SO2-)": "[SX4](=O)(=O)",
+    "Ester (-COOR)": "[CX3](=O)[OX2H0]",
+    "Ether (-O-)": "[OD2]([#6])[#6]"
 }
 
-export default App;
+# ✅ Sample Database for Similarity Search
+MOLECULE_DATABASE = {
+    "Aspirin": "CC(=O)OC1=CC=CC=C1C(=O)O",
+    "Paracetamol": "CC(=O)NC1=CC=C(O)C=C1",
+    "Ibuprofen": "CC(C)CC1=CC=C(C=C1)C(C)C(=O)O",
+    "Caffeine": "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
+    "Ethanol": "CCO",
+    "Methanol": "CO"
+}
+
+# ✅ Compute Tanimoto Similarity for Similarity Search
+def compute_similarity(smiles1, smiles2):
+    mol1 = Chem.MolFromSmiles(smiles1)
+    mol2 = Chem.MolFromSmiles(smiles2)
+    if mol1 and mol2:
+        fp1 = AllChem.GetMorganFingerprintAsBitVect(mol1, 2)
+        fp2 = AllChem.GetMorganFingerprintAsBitVect(mol2, 2)
+        return DataStructs.TanimotoSimilarity(fp1, fp2)
+    return 0.0
+
+# ✅ Detect Functional Groups
+def detect_functional_groups(mol):
+    detected_groups = []
+    for name, smarts in FUNCTIONAL_GROUPS.items():
+        pattern = Chem.MolFromSmarts(smarts)
+        if mol.HasSubstructMatch(pattern):
+            detected_groups.append(name)
+    return detected_groups
+
+# ✅ Fetch IUPAC Name from PubChem API
+def get_iupac_name(smiles):
+    try:
+        url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles/{smiles}/property/IUPACName/JSON"
+        response = requests.get(url)
+        data = response.json()
+        return data["PropertyTable"]["Properties"][0]["IUPACName"]
+    except:
+        return "IUPAC name not found"
+
+# ✅ Home Route
+@app.route("/")
+def home():
+    return "Welcome to the Chemistry Research Chatbot!"
+
+# ✅ Molecule Analysis Route
+@app.route("/molecule-info", methods=["POST"])
+def molecule_info():
+    data = request.json
+    smiles = data.get("smiles", "").strip()
+
+    if not smiles:
+        return jsonify({"error": "No SMILES input provided"}), 400
+
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        return jsonify({"error": "Invalid SMILES string"}), 400
+
+    iupac_name = get_iupac_name(smiles)
+    properties = {
+        "message": "Valid molecule",
+        "smiles": smiles,
+        "iupac_name": iupac_name,
+        "molecular_weight": round(Descriptors.MolWt(mol), 4),
+        "num_atoms": mol.GetNumAtoms(),
+        "num_bonds": mol.GetNumBonds(),
+        "logP": round(Descriptors.MolLogP(mol), 4)
+    }
+
+    return jsonify(properties)
+
+# ✅ Molecule 2D Image Generation Route
+@app.route("/molecule-image", methods=["POST"])
+def molecule_image():
+    data = request.json
+    smiles = data.get("smiles", "").strip()
+
+    if not smiles:
+        return jsonify({"error": "No SMILES input provided"}), 400
+
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        return jsonify({"error": "Invalid SMILES string"}), 400
+
+    AllChem.Compute2DCoords(mol)
+    img_io = BytesIO()
+    img = Draw.MolToImage(mol, size=(400, 400))
+    img.save(img_io, format="PNG")
+    img_io.seek(0)
+
+    return send_file(img_io, mimetype="image/png")
+
+# ✅ AI-Based Molecule Generation Route
+@app.route("/generate-molecule", methods=["POST"])
+def generate_molecule():
+    data = request.json
+    smiles = data.get("smiles", "").strip()
+
+    if not smiles:
+        return jsonify({"error": "No SMILES input provided"}), 400
+
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        return jsonify({"error": "Invalid SMILES string"}), 400
+
+    generated_smiles = []
+    for _ in range(5):
+        try:
+            mutated_mol = Chem.RWMol(mol)
+            if mutated_mol.GetNumAtoms() > 1:
+                random_atom = random.randint(0, mutated_mol.GetNumAtoms() - 1)
+                mutated_mol.RemoveAtom(random_atom)
+                Chem.SanitizeMol(mutated_mol)
+                new_smiles = Chem.MolToSmiles(mutated_mol)
+                if Chem.MolFromSmiles(new_smiles):
+                    generated_smiles.append(new_smiles)
+        except:
+            continue  # Skip invalid mutations
+
+    if not generated_smiles:
+        return jsonify({"error": "Failed to generate valid molecules"}), 400
+
+    return jsonify({"generated_smiles": generated_smiles})
+
+# ✅ Functional Group Detection Route
+@app.route("/functional-groups", methods=["POST"])
+def functional_groups():
+    data = request.json
+    smiles = data.get("smiles", "").strip()
+
+    if not smiles:
+        return jsonify({"error": "No SMILES input provided"}), 400
+
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        return jsonify({"error": "Invalid SMILES string"}), 400
+
+    groups = detect_functional_groups(mol)
+    return jsonify({"smiles": smiles, "functional_groups": groups})
+
+# ✅ Find Similar Molecules Route
+@app.route("/similar-molecules", methods=["POST"])
+def find_similar_molecules():
+    data = request.json
+    smiles = data.get("smiles", "").strip()
+
+    if not smiles:
+        return jsonify({"error": "No SMILES input provided"}), 400
+
+    try:
+        similarities = {
+            name: compute_similarity(smiles, db_smiles)
+            for name, db_smiles in MOLECULE_DATABASE.items()
+        }
+
+        sorted_similarities = sorted(similarities.items(), key=lambda x: x[1], reverse=True)
+
+        return jsonify({
+            "input_smiles": smiles,
+            "similar_molecules": [
+                {"name": name, "similarity": round(score, 3)}
+                for name, score in sorted_similarities if score > 0
+            ]
+        })
+
+    except Exception as e:
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+# ✅ Run Flask App with Waitress
+if __name__ == "__main__":
+    from waitress import serve
+    print("Running server on http://0.0.0.0:5000/")
+    serve(app, host="0.0.0.0", port=5000)
 
 
